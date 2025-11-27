@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>晚餐推薦器 3.1 – Dinner Picker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #ffe6f2, #fff7e6);
+        }
+
+        .card {
+            background: #ffffff;
+            padding: 24px 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            max-width: 480px;
+            width: 94%;
+            margin: 16px;
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 22px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            text-align: center;
+            color: #777;
+            margin-bottom: 16px;
+        }
+
+        .field-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            font-size: 13px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            background: #fafafa;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 999px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+        }
+
+        #pickButton {
+            background: linear-gradient(135deg, #ff9f43, #ff6b81);
+            color: #fff;
+        }
+
+        #favButton {
+            background: #ffffff;
+            border: 1px solid #ffd1a3;
+            color: #ff7a45;
+        }
+
+        #favButton:hover,
+        #pickButton:hover {
+            opacity: 0.96;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        .result-card {
+            margin-top: 18px;
+            padding: 14px 12px;
+            border-radius: 16px;
+            background: #fff7e0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            transform-origin: center;
+        }
+
+        /* 抽卡動畫：每次抽晚餐會放大一下再回來 */
+        @keyframes pop {
+            0%   { transform: scale(0.9); opacity: 0; }
+            60%  { transform: scale(1.04); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        .result-card.animate {
+            animation: pop 0.28s ease-out;
+        }
+
+        .food-image {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            background: #ffe0e9;
+        }
+
+        .result-texts {
+            flex: 1;
+        }
+
+        .dish-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .dish-tags {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 6px;
+        }
+
+        .extra-text {
+            margin-top: 8px;
+            font-size: 13px;
+            background: #ffffffbb;
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+
+        .extra-text span.label {
+            font-weight: 600;
+        }
+
+        .hint {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+        }
+
+        .section-title {
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .list-box {
+            margin-top: 6px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: #fafafa;
+            font-size: 13px;
+        }
+
+        .list-box ul {
+            padding-left: 18px;
+            margin: 4px 0 0;
+        }
+
+        .list-box li {
+            margin-bottom: 2px;
+        }
+
+        /* 📱 RWD：在手機上字體稍微變小、按鈕改成直排比較好點 */
+        @media (max-width: 480px) {
+            .card {
+                padding: 18px 14px;
+                margin: 8px;
+                border-radius: 16px;
+            }
+
+            h1 {
+                font-size: 19px;
+            }
+
+            .subtitle {
+                font-size: 12px;
+            }
+
+            .button-row {
+                flex-direction: column;
+            }
+
+            button {
+                font-size: 13px;
+            }
+
+            .food-image {
+                width: 56px;
+                height: 56px;
+                font-size: 30px;
+            }
+
+            .dish-name {
+                font-size: 15px;
+            }
+
+            .dish-tags,
+            .list-box,
+            .extra-text {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>晚餐推薦器 3.1 🍱</h1>
+        <div class="subtitle">選一下條件，讓我幫妳決定今天要吃什麼</div>
+
+        <div class="field-group">
+            <label for="region">想吃哪一國風味？</label>
+            <select id="region">
+                <option value="all">全部都可以</option>
+                <option value="tw">台式</option>
+                <option value="jp">日式</option>
+                <option value="kr">韓式</option>
+                <option value="us">美式</option>
+            </select>
+        </div>
+
+        <div class="field-group">
+            <label for="protein">想吃什麼蛋白質？</label>
+            <select id="protein">
+                <option value="all">不限，通通可以</option>
+                <option value="pork">豬肉</option>
+                <option value="chicken">雞肉</option>
+                <option value="beef">牛肉</option>
+                <option value="vegan">素食 / 蔬食 / 海鮮</option>
+            </select>
+        </div>
+
+        <div class="field-group">
+            <label for="budget">預算大概多少？</label>
+            <select id="budget">
+                <option value="all">不限，看心情</option>
+                <option value="cheap">$ 學生省錢</option>
+                <option value="normal">$$ 一般預算</option>
+                <option value="high">$$$ 想奢侈一下</option>
+            </select>
+        </div>
+
+        <div class="button-row">
+            <button id="pickButton">幫我決定晚餐！</button>
+            <button id="favButton">加入最愛 ⭐</button>
+        </div>
+
+        <div class="result-card" id="resultCard">
+            <div class="food-image" id="foodImage">🍽️</div>
+            <div class="result-texts">
+                <div class="dish-name" id="dishName">還沒決定，按一下上面的按鈕試試看！</div>
+                <div class="dish-tags" id="dishTags">等妳選條件，我再幫妳想。</div>
+            </div>
+        </div>
+
+        <div class="extra-text" id="reminderBox">
+            <span class="label">小提醒：</span>
+            今天也辛苦了，等一下好好吃一餐，再慢慢面對世界。
+        </div>
+
+        <div class="extra-text" id="addonBox" style="margin-top:6px;">
+            <span class="label">加購推薦：</span>
+            要不要順便來一杯無糖綠？😆
+        </div>
+
+        <div class="section-title">最近抽到的晚餐</div>
+        <div class="list-box">
+            <ul id="historyList">
+                <li>還沒有紀錄，先抽一個晚餐看看吧！</li>
+            </ul>
+        </div>
+
+        <div class="section-title">我的最愛 ⭐</div>
+        <div class="list-box">
+            <ul id="favoriteList">
+                <li>還沒有加入最愛，抽到喜歡的可以按「加入最愛」。</li>
+            </ul>
+        </div>
+
+        <div class="hint">
+            抽到不喜歡可以一直重抽，直到妳覺得「好啦就吃這個」為止 ♡
+        </div>
+    </div>
+
+    <script>
+        // 晚餐資料：名稱、地區、蛋白質、圖示、預算
+        // price: cheap / normal / high
+        const menus = [
+            // 台式
+            { name: "滷肉飯 + 青菜", region: "tw", protein: "pork", emoji: "🍚", price: "cheap" },
+            { name: "雞肉飯 + 貢丸湯", region: "tw", protein: "chicken", emoji: "🍗", price: "cheap" },
+            { name: "雞腿便當", region: "tw", protein: "chicken", emoji: "🍱", price: "normal" },
+            { name: "牛肉麵", region: "tw", protein: "beef", emoji: "🍜", price: "normal" },
+            { name: "水煮便當（蔬菜 + 豆腐）", region: "tw", protein: "vegan", emoji: "🥦", price: "normal" },
+            { name: "鍋貼 + 酸辣湯", region: "tw", protein: "pork", emoji: "🥟", price: "cheap" },
+            { name: "自助餐（兩菜一肉）", region: "tw", protein: "pork", emoji: "🍛", price: "normal" },
+            { name: "鹽水雞 + 燙青菜", region: "tw", protein: "chicken", emoji: "🥗", price: "normal" },
+
+            // 日式
+            { name: "豬排咖哩飯", region: "jp", protein: "pork", emoji: "🍛", price: "normal" },
+            { name: "親子丼", region: "jp", protein: "chicken", emoji: "🍲", price: "normal" },
+            { name: "牛丼（牛肉丼飯）", region: "jp", protein: "beef", emoji: "🥩", price: "normal" },
+            { name: "日式炒烏龍麵", region: "jp", protein: "pork", emoji: "🍝", price: "normal" },
+            { name: "和風沙拉烏龍麵（蔬食）", region: "jp", protein: "vegan", emoji: "🥬", price: "normal" },
+            { name: "生魚片丼飯（海鮮）", region: "jp", protein: "vegan", emoji: "🍣", price: "high" },
+
+            // 韓式
+            { name: "韓式炸雞 + 年糕", region: "kr", protein: "chicken", emoji: "🍗", price: "high" },
+            { name: "部隊鍋", region: "kr", protein: "pork", emoji: "🍲", price: "high" },
+            { name: "泡菜鍋（豆腐為主）", region: "kr", protein: "vegan", emoji: "🥘", price: "normal" },
+            { name: "韓式烤牛肉飯", region: "kr", protein: "beef", emoji: "🍖", price: "high" },
+            { name: "石鍋拌飯", region: "kr", protein: "vegan", emoji: "🍚", price: "normal" },
+
+            // 美式
+            { name: "起司牛肉堡 + 薯條", region: "us", protein: "beef", emoji: "🍔", price: "normal" },
+            { name: "炸雞桶（分享餐）", region: "us", protein: "chicken", emoji: "🍗", price: "high" },
+            { name: "BBQ 豬肋排餐", region: "us", protein: "pork", emoji: "🍖", price: "high" },
+            { name: "蔬菜披薩", region: "us", protein: "vegan", emoji: "🍕", price: "normal" },
+            { name: "雞柳沙拉碗", region: "us", protein: "chicken", emoji: "🥗", price: "normal" },
+            { name: "牛排套餐", region: "us", protein: "beef", emoji: "🥩", price: "high" }
+        ];
+
+        // 小提醒
+        const reminders = [
+            "今天也辛苦了，吃飽一點再煩惱其他事就好 💛",
+            "慢慢吃、好好咬，讓自己喘口氣。",
+            "邊吃飯邊滑手機可以，但記得抬頭看看世界。",
+            "就算今天很亂，還是值得一頓好好吃的晚餐。",
+            "不要只吃炸的，可以加一點青菜，未來的你會感謝現在的自己。",
+            "吃飯的時候，先把所有作業丟到腦外十分鐘。",
+            "你不用一直那麼撐著，先吃飽，其他等一下。",
+            "晚餐不只是食物，是給自己一點被照顧的感覺。",
+            "再忙也要吃飯，不然大腦會罷工的。",
+            "對自己好一點，從晚餐開始。"
+        ];
+
+        // 加購推薦
+        const addons = [
+            "順便加一杯無糖綠？解膩又不太罪惡。",
+            "要不要再來一碗湯，暖一下胃？",
+            "加點一份青菜，營養會更完整 🥦",
+            "來一杯氣泡水，儀式感直接拉滿。",
+            "甜點小小一份可以，雞蛋糕或布丁都不錯。",
+            "如果今天很累，可以加點飲料犒賞自己一下。",
+            "加點水果當 ending，身體會很開心 🍎",
+            "要不要再配一點豆漿或牛奶，補個蛋白質？",
+            "來點小點心當追劇良伴吧 🍿",
+            "如果是外帶，可以順便買明天的早餐，一次搞定。"
+        ];
+
+        const regionMap = {
+            all: "不限",
+            tw: "台式",
+            jp: "日式",
+            kr: "韓式",
+            us: "美式"
+        };
+
+        const proteinMap = {
+            all: "不限",
+            pork: "豬肉",
+            chicken: "雞肉",
+            beef: "牛肉",
+            vegan: "素食 / 蔬食 / 海鮮"
+        };
+
+        const budgetMap = {
+            all: "不限",
+            cheap: "學生省錢",
+            normal: "一般預算",
+            high: "想奢侈一下"
+        };
+
+        const regionSelect = document.getElementById("region");
+        const proteinSelect = document.getElementById("protein");
+        const budgetSelect = document.getElementById("budget");
+        const pickButton = document.getElementById("pickButton");
+        const favButton = document.getElementById("favButton");
+
+        const foodImage = document.getElementById("foodImage");
+        const dishName = document.getElementById("dishName");
+        const dishTags = document.getElementById("dishTags");
+        const reminderBox = document.getElementById("reminderBox");
+        const addonBox = document.getElementById("addonBox");
+        const historyList = document.getElementById("historyList");
+        const favoriteList = document.getElementById("favoriteList");
+        const resultCard = document.getElementById("resultCard");
+
+        let lastChoice = null;          // 最近一次抽到的餐點
+        let history = [];               // 最近的歷史紀錄（顯示前 3 筆）
+        let favorites = [];             // 收藏的最愛
+
+        function pickRandom(list) {
+            const index = Math.floor(Math.random() * list.length);
+            return list[index];
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = "<li>還沒有紀錄，先抽一個晚餐看看吧！</li>";
+                return;
+            }
+            historyList.innerHTML = history
+                .map(item => "<li>" + item + "</li>")
+                .join("");
+        }
+
+        function renderFavorites() {
+            if (favorites.length === 0) {
+                favoriteList.innerHTML = "<li>還沒有加入最愛，抽到喜歡的可以按「加入最愛」。</li>";
+                return;
+            }
+            favoriteList.innerHTML = favorites
+                .map(item => "<li>" + item + "</li>")
+                .join("");
+        }
+
+        pickButton.addEventListener("click", () => {
+            const selectedRegion = regionSelect.value;
+            const selectedProtein = proteinSelect.value;
+            const selectedBudget = budgetSelect.value;
+
+            // 篩選符合條件的餐點
+            const filtered = menus.filter(item => {
+                const regionOK = (selectedRegion === "all") || (item.region === selectedRegion);
+                const proteinOK = (selectedProtein === "all") || (item.protein === selectedProtein);
+                const budgetOK = (selectedBudget === "all") || (item.price === selectedBudget);
+                return regionOK && proteinOK && budgetOK;
+            });
+
+            if (filtered.length === 0) {
+                lastChoice = null;
+                dishName.textContent = "這個組合太挑了，我一時想不到 😭 換個條件試試？";
+                dishTags.textContent = "可以把地區、蛋白質或預算改成「不限」，給我多一點選擇。";
+                foodImage.textContent = "🤯";
+                reminderBox.innerHTML = '<span class="label">小提醒：</span>有時候不要太要求完美，隨便吃一點也沒關係。';
+                addonBox.innerHTML = '<span class="label">加購推薦：</span>先喝杯水，讓大腦冷靜一下再選。';
+
+                // 讓動畫重置（沒有抽到也不要閃動）
+                resultCard.classList.remove("animate");
+                return;
+            }
+
+            const choice = pickRandom(filtered);
+            const reminder = pickRandom(reminders);
+            const addon = pickRandom(addons);
+
+            lastChoice = choice;
+
+            foodImage.textContent = choice.emoji;
+            dishName.textContent = "推薦妳吃：「" + choice.name + "」";
+            dishTags.textContent =
+                "地區：" + regionMap[choice.region] +
+                " ｜ 蛋白質：" + proteinMap[choice.protein] +
+                " ｜ 預算：" + budgetMap[choice.price];
+
+            reminderBox.innerHTML = '<span class="label">小提醒：</span>' + reminder;
+            addonBox.innerHTML = '<span class="label">加購推薦：</span>' + addon;
+
+            // 更新歷史紀錄（只保留最近三筆）
+            history.unshift(choice.name);
+            if (history.length > 3) {
+                history.pop();
+            }
+            renderHistory();
+
+            // 重新觸發卡片動畫：先移除 class，再強制 reflow，再加回去
+            resultCard.classList.remove("animate");
+            void resultCard.offsetWidth; // 強制瀏覽器重算一次 layout
+            resultCard.classList.add("animate");
+        });
+
+        favButton.addEventListener("click", () => {
+            if (!lastChoice) {
+                // 還沒有抽過晚餐
+                reminderBox.innerHTML = '<span class="label">小提醒：</span>先按「幫我決定晚餐！」抽一個，我才知道要幫妳收藏哪一道呀～';
+                return;
+            }
+
+            if (!favorites.includes(lastChoice.name)) {
+                favorites.push(lastChoice.name);
+                renderFavorites();
+
+                addonBox.innerHTML = '<span class="label">加購推薦：</span>已幫妳把「' +
+                    lastChoice.name + '」收進最愛清單，下次可以直接看下面決定。';
+            } else {
+                reminderBox.innerHTML = '<span class="label">小提醒：</span>「' +
+                    lastChoice.name + '」已經在妳的最愛裡面了，可以再去發掘新的愛吃選項 ❤️';
+            }
+        });
+
+        // 初始化列表
+        renderHistory();
+        renderFavorites();
+    </script>
+</body>
+</html>
